@@ -87,6 +87,12 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 	As a workaround, we create separate instances of the dropdown for each provider, and then conditionally render the one that matches the current provider.
 	*/
 	const createDropdown = (models: Record<string, ModelInfo>) => {
+		const isVertexAI = selectedProvider === "vertex";
+		
+		const modelEntries = Object.entries(models);
+		const claudeModels = modelEntries.filter(([id]) => id.includes("claude"));
+		const geminiModels = modelEntries.filter(([id]) => id.includes("gemini"));
+		
 		return (
 			<VSCodeDropdown
 				id="model-id"
@@ -94,18 +100,28 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 				onChange={handleInputChange("apiModelId")}
 				style={{ width: "100%" }}>
 				<VSCodeOption value="">Select a model...</VSCodeOption>
-				{Object.keys(models).map((modelId) => (
-					<VSCodeOption
-						key={modelId}
-						value={modelId}
-						style={{
-							whiteSpace: "normal",
-							wordWrap: "break-word",
-							maxWidth: "100%",
-						}}>
-						{modelId}
-					</VSCodeOption>
-				))}
+					{isVertexAI ? (
+						<>
+							<VSCodeOption disabled>──── Claude Models ────</VSCodeOption>
+							{claudeModels.map(([modelId]) => (
+								<VSCodeOption key={modelId} value={modelId}>
+									{modelId}
+								</VSCodeOption>
+							))}
+							<VSCodeOption disabled>──── Gemini Models ────</VSCodeOption>
+							{geminiModels.map(([modelId]) => (
+								<VSCodeOption key={modelId} value={modelId}>
+									{modelId}
+								</VSCodeOption>
+							))}
+						</>
+					) : (
+						modelEntries.map(([modelId]) => (
+							<VSCodeOption key={modelId} value={modelId}>
+								{modelId}
+							</VSCodeOption>
+						))
+					)}
 			</VSCodeDropdown>
 		)
 	}
@@ -561,7 +577,15 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 							modelInfo={selectedModelInfo}
 							isDescriptionExpanded={isDescriptionExpanded}
 							setIsDescriptionExpanded={setIsDescriptionExpanded}
-						/>
+							/>
+							{selectedModelId.includes("claude") && (
+								<p style={{ margin: "0 0 4px 0", fontSize: 12 }}>
+									<span style={{ color: "var(--vscode-errorForeground)" }}>
+										(<span style={{ fontWeight: 500 }}>Note:</span> Cline uses complex prompts and works best
+										with Claude models. Less capable models may not work as expected.)
+									</span>
+								</p>
+							)}
 					</>
 				)}
 
