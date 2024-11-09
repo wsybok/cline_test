@@ -30,9 +30,25 @@ export class VertexHandler implements ApiHandler {
 		if (model.id.startsWith("gemini")) {
 			const geminiModel = await this.geminiClient.getGenerativeModel({ model: model.id })
 			try {
-				const messageContent = messages[messages.length - 1].content.toString()
+				// Convert messages to Gemini format
+				const geminiMessages = messages.map(msg => ({
+					role: msg.role === 'assistant' ? 'model' : 'user',
+					parts: [{ text: Array.isArray(msg.content) 
+						? msg.content.map(c => typeof c === 'string' ? c : JSON.stringify(c)).join('\n')
+						: msg.content.toString() 
+					}]
+				}))
+
+				// Add system prompt if provided
+				if (systemPrompt) {
+					geminiMessages.unshift({
+						role: 'user',
+						parts: [{ text: `System: ${systemPrompt}` }]
+					})
+				}
+
 				const stream = await geminiModel.generateContentStream({
-					contents: [{ role: 'user', parts: [{ text: messageContent }] }],
+					contents: geminiMessages,
 					safetySettings: [
 						{
 							category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
@@ -42,15 +58,17 @@ export class VertexHandler implements ApiHandler {
 				})
 
 				for await (const chunk of stream.stream) {
-					if (chunk.candidates?.[0]?.content?.parts?.[0]?.text) {
-						yield {
-							type: "text",
-							text: chunk.candidates[0].content.parts[0].text,
-						}
+					if (!chunk.candidates?.[0]?.content?.parts?.[0]?.text) {
+						continue
+					}
+					yield {
+						type: "text",
+						text: chunk.candidates[0].content.parts[0].text,
 					}
 				}
 			} catch (error) {
-				throw new Error(`Gemini API error: ${(error as Error).message}`)
+				const errorMessage = error instanceof Error ? error.message : String(error)
+				throw new Error(`Gemini API error: ${errorMessage}\nDetails: ${JSON.stringify(error)}`)
 			}
 		} else {
 			// Existing Claude handling code
