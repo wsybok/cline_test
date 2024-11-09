@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
-import { VertexAI, GenerateContentStreamResult } from "@google-cloud/vertexai"
+import { VertexAI, HarmCategory, HarmBlockThreshold } from "@google-cloud/vertexai"
 import { ApiHandler } from "../"
 import { ApiHandlerOptions, ModelInfo, vertexDefaultModelId, VertexModelId, vertexModels } from "../../shared/api"
 import { ApiStream } from "../transform/stream"
@@ -30,12 +30,13 @@ export class VertexHandler implements ApiHandler {
 		if (model.id.startsWith("gemini")) {
 			const geminiModel = await this.geminiClient.getGenerativeModel({ model: model.id })
 			try {
+				const messageContent = messages[messages.length - 1].content.toString()
 				const stream = await geminiModel.generateContentStream({
-					contents: [{ role: 'user', parts: [{ text: messages[messages.length - 1].content }] }],
+					contents: [{ role: 'user', parts: [{ text: messageContent }] }],
 					safetySettings: [
 						{
-							category: "HARM_CATEGORY_DANGEROUS",
-							threshold: "BLOCK_NONE",
+							category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+							threshold: HarmBlockThreshold.BLOCK_NONE,
 						},
 					],
 				})
